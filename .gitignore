@@ -1,0 +1,12 @@
+# Ignore files by type
+*.json
+*.ai
+*.csv
+*.txt
+*.jpg
+*.png
+*.svg
+*.xlsx
+__pycache__/
+.env
+!requirements.txt
