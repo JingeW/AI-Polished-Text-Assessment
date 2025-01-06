@@ -14,7 +14,6 @@ PLOT_STYLE = {
     "xtick.labelsize": 14,
     "ytick.labelsize": 14,
     "legend.fontsize": 12,
-    "figure.figsize": (10, 6),
 }
 plt.rcParams.update(PLOT_STYLE)
 plt.rcParams['svg.fonttype'] = 'none'  # Ensure text is preserved in SVG
@@ -46,7 +45,7 @@ def plot_ai_score_by_year_and_location(df, output_dir):
     filtered_df["location"] = pd.Categorical(filtered_df["location"], categories=["Asian", "USA"], ordered=True)
 
     # Create a custom palette with two distinct colors
-    custom_palette = ["#3594cc", "#ea801c"]  # Example colors for 2020 and 2024
+    custom_palette = ["#3594cc", "#228B3B"]  # Example colors for 2020 and 2024
 
     # Plot boxplot
     plt.figure(figsize=(8, 6))
@@ -56,7 +55,23 @@ def plot_ai_score_by_year_and_location(df, output_dir):
         y="completely_generated_prob",
         hue="year",  # Hue for 2020 vs 2024
         dodge=True,
-        palette=custom_palette
+        palette=custom_palette,
+        showfliers=False  # Remove outliers
+    )
+
+    # Overlay data points
+    sns.stripplot(
+        data=filtered_df,
+        x="location",
+        y="completely_generated_prob",
+        hue="year",
+        dodge=True,
+        marker='x',
+        color='black',
+        alpha=0.8,
+        ax=ax,
+        linewidth=1,
+        zorder=3
     )
 
     # Customizations
@@ -74,7 +89,7 @@ def plot_ai_score_by_year_and_location(df, output_dir):
 # ------------------------------
 def plot_ai_score_by_location_and_reps(df, output_dir):
     # Define custom color palette
-    color_palette = ["#3594cc", "#ea801c", "#54a1a1", "#1f6f6f"]
+    color_palette = ["#228B3B", "#40AD5A", "#6CBA7D", "#3594cc"]
 
     filtered_df = df[df["version"].isin(["original", "rep1", "rep2", "rep3"])]
     fig, axes = plt.subplots(1, 2, figsize=(12, 6), sharey=True)
@@ -87,7 +102,19 @@ def plot_ai_score_by_location_and_reps(df, output_dir):
             x="version",
             y="completely_generated_prob",
             ax=axes[i],
-            palette=color_palette
+            palette=color_palette,
+            showfliers=False  # Remove outliers
+        )
+        sns.stripplot(
+            data=loc_df,
+            x="version",
+            y="completely_generated_prob",
+            color='black',
+            marker='x',
+            alpha=0.8,
+            linewidth=1,
+            zorder=3,
+            ax=axes[i]
         )
         customize_plot(ax)
         axes[i].set_xlabel("")
@@ -96,7 +123,6 @@ def plot_ai_score_by_location_and_reps(df, output_dir):
 
     plt.tight_layout()
     save_plot("fig2", output_dir)
-
 
 if __name__ == "__main__":
     results_csv_path = "results/ai_detection_results.csv"

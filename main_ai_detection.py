@@ -73,14 +73,17 @@ def main():
             with open(text_path, "r", encoding="utf-8") as file:
                 article_text = file.read()
 
+            # Calculate letter length
+            letter_length = len(article_text.replace(" ", ""))
+
             # Readability analysis
             readability_metrics = analysis_service.calculate_readability(article_text)
             readability_metrics.update(analysis_service.calculate_scientific_metrics(article_text))
 
             if rep == "original":
-                result_entry["original"] = readability_metrics
+                result_entry["original"] = {**readability_metrics, "letter_length": letter_length}
             else:
-                result_entry["polished"][rep] = readability_metrics
+                result_entry["polished"][rep] = {**readability_metrics, "letter_length": letter_length}
 
             # AI Detection: Skip API call if JSON exists
             if os.path.exists(gptzero_save_path):
@@ -98,17 +101,17 @@ def main():
             ai_detection_results.append({
                 "article_id": article_id,
                 "title": metadata.get("Title", "N/A"),
+                "authors": "; ".join([" ".join([part for part in author.split() if "@" not in part]).strip() for author in metadata.get("Authors", ["N/A"])]),
                 "year": metadata.get("Year", "N/A"),
                 "location": metadata.get("Location", "N/A"),
                 "version": rep,
+                "letter_length": letter_length,
                 "completely_generated_prob": round(document.get("completely_generated_prob", 0.0), 3),
                 "human_prob": round(class_probabilities.get("human", 0.0), 3),
                 "ai_prob": round(class_probabilities.get("ai", 0.0), 3),
                 "mixed_prob": round(class_probabilities.get("mixed", 0.0), 3),
                 "predicted_class": document.get("predicted_class", "N/A"),
-                "result_message": document.get("result_message", "N/A"),
                 "confidence_category": document.get("confidence_category", "N/A"),
-                "average_generated_prob": round(document.get("average_generated_prob", 0.0), 3),
             })
 
         # Append readability results
@@ -144,9 +147,42 @@ def main():
     save_to_csv(pd.DataFrame(flat_readability_results), readability_csv_path)
     logging.info(f"Readability comparison saved to {readability_csv_path}.")
 
-    # Save AI detection results to CSV
-    ai_detection_csv_path = os.path.join(results_dir, "ai_detection_results.csv")
-    save_to_csv(pd.DataFrame(ai_detection_results), ai_detection_csv_path)
+    # Save AI detection results to CSV with specified columns and version order
+    ai_detection_results_ordered = []
+    version_order = ["original", "rep1", "rep2", "rep3"]
+
+    # Iterate over metadata to maintain additional attributes and version order
+    for article_id, metadata in metadata_records.items():
+        for version in version_order:
+            relevant_results = [
+                result for result in ai_detection_results
+                if result["article_id"] == article_id and result["version"] == version
+            ]
+            if relevant_results:
+                ai_detection_results_ordered.extend(relevant_results)
+
+    # Filter and save the relevant fields
+    filtered_results = [
+        {
+            "article_id": result["article_id"],
+            "title": result.get("title", "N/A"),
+            "authors": result.get("authors", "N/A"),
+            "year": result.get("year", "N/A"),
+            "location": result.get("location", "N/A"),
+            "version": result.get("version", "N/A"),
+            "letter_length": result.get("letter_length", 0),
+            "human_prob": result.get("human_prob", 0.0),
+            "ai_prob": result.get("ai_prob", 0.0),
+            "mixed_prob": result.get("mixed_prob", 0.0),
+            "completely_generated_prob": result.get("completely_generated_prob", 0.0),
+            "predicted_class": result.get("predicted_class", "N/A"),
+            "confidence_category": result.get("confidence_category", "N/A"),
+        }
+        for result in ai_detection_results_ordered
+    ]
+
+    ai_detection_csv_path = os.path.join(results_dir, "ai_detection_results_new.csv")
+    save_to_csv(pd.DataFrame(filtered_results), ai_detection_csv_path)
     logging.info(f"AI detection results saved to {ai_detection_csv_path}.")
 
 if __name__ == "__main__":

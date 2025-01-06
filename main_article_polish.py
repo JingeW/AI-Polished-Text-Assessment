@@ -24,7 +24,7 @@ def main(args):
 
     # Load API key
     load_dotenv()
-    api_key = os.getenv('API_KEY_1')
+    api_key = os.getenv('API_KEY')
 
     if not api_key:
         raise ValueError("API key not found. Please set API_KEY_1 in your .env file.")
@@ -75,6 +75,7 @@ def main(args):
         Titles = df["Title"].tolist()
         years = df["Year"].tolist()
         grp = df["GRP"].tolist()
+        authors_raw = df.get("Authors", ["Unknown"] * len(df)).tolist()  # Default to "Unknown" if 'Authors' column is missing
 
         # Process metadata and save cleaned texts
         metadata_records = {}
@@ -84,12 +85,14 @@ def main(args):
             Title = Titles[idx]
             year = years[idx]
             location = "USA" if grp[idx] == "USA" else "Asian"
+            author_list = authors_raw[idx].split(" ∙ ") if authors_raw[idx] != "Unknown" else ["Unknown"]
 
             # Add metadata to the record
             metadata_records[idx + 1] = {
                 "Title": Title,
                 "Year": year,
                 "Location": location,
+                "Authors": author_list
             }
 
             cleaned_article = data_prep_service.clean_article(article)
