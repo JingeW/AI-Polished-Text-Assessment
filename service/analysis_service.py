@@ -12,13 +12,17 @@ class AnalysisService:
         self.nlp = spacy.load("en_core_web_sm")
         self.gptzero_api_url = "https://api.gptzero.me/v2/predict/text"
         self.gptzero_api_key = os.getenv("GPTZERO_API_KEY")
+        self.originality_api_url = "https://api.originality.ai/api/v2/scan"
+        self.originality_api_key = os.getenv("ORIGINALITY_API_KEY")
 
-    def detect_ai_text(self, text: str) -> dict:
+    def detect_ai_text_gptzero(self, text: str) -> dict:
+        """
+        Detect AI-generated text using GPTZero API.
+        """
         payload = {
             "document": text,
             "multilingual": False
         }
-
         headers = {
             "x-api-key": self.gptzero_api_key,
             "Content-Type": "application/json"
@@ -28,9 +32,43 @@ class AnalysisService:
             response.raise_for_status()
             return response.json()
         except requests.RequestException as e:
-            print(f"API request failed: {e}")
+            print(f"GPTZero API request failed: {e}")
             return {"error": str(e)}
-        
+
+    def detect_ai_text_originality(self, text: str) -> dict:
+        """
+        Detect AI-generated text using Originality.AI API v2.0.
+        """
+        if not text.strip():
+            return {"error": "Content is empty or invalid."}
+
+        url = self.originality_api_url
+        payload = {
+            "content": text.strip(),  # Ensure the content is clean
+            "storeScan": False,
+            "aiModel": "turbo",  # Use the appropriate AI model
+            "scan_ai": True,
+            "scan_plag": False,
+            "scan_readability": False,
+            "scan_grammar_spelling": False,
+        }
+        headers = {
+            "Accept": "application/json",
+            "X-OAI-API-KEY": self.originality_api_key,
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()  # Raise an error for HTTP issues
+            return response.json()
+        except requests.exceptions.HTTPError as e:
+            print(f"Originality.AI API request failed: {e}")
+            print(f"Response content: {response.text}")
+            return {"error": f"HTTP error: {e}"}
+        except requests.RequestException as e:
+            print(f"Request error: {e}")
+            return {"error": str(e)}
+
     def calculate_readability(self, text: str) -> dict:
         """
         Calculate traditional readability metrics for a given text.
